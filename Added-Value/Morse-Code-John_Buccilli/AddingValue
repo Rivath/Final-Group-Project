@@ -1,0 +1,69 @@
+To use the keypad header file and the keypad itself I looked at the arduino examples with the keypad. 
+I added the use of the key inputs to start the speaker creating sounds. Also the use of a key to signal the user is 
+ready to input data. The use of the speaker was based off previous experience. The case and switch statement for
+cahrToMorse() were added by me to set the alphabet of Morse code to the speaker output. The other case statement was added by
+myself to set the unique passwords and Morse code words together. Other additions include loop logic and other basic
+programming functions.
+
+The below link had all the needed info on the keypad.
+http://playground.arduino.cc/Main/KeypadTutorial
+
+Reference Code Used
+
+/*  Keypadtest.pde
+ *
+ *  Demonstrate the simplest use of the  keypad library.
+ *
+ *  The first step is to connect your keypad to the
+ *  Arduino  using the pin numbers listed below in
+ *  rowPins[] and colPins[]. If you want to use different
+ *  pins then  you  can  change  the  numbers below to
+ *  match your setup.
+ *
+ */
+#include <Keypad.h>
+
+const byte ROWS = 4; // Four rows
+const byte COLS = 3; // Three columns
+// Define the Keymap
+char keys[ROWS][COLS] = {
+  {'1','2','3'},
+  {'4','5','6'},
+  {'7','8','9'},
+  {'#','0','*'}
+};
+// Connect keypad ROW0, ROW1, ROW2 and ROW3 to these Arduino pins.
+byte rowPins[ROWS] = { 9, 8, 7, 6 };
+// Connect keypad COL0, COL1 and COL2 to these Arduino pins.
+byte colPins[COLS] = { 12, 11, 10 }; 
+
+// Create the Keypad
+Keypad kpd = Keypad( makeKeymap(keys), rowPins, colPins, ROWS, COLS );
+
+#define ledpin 13
+
+void setup()
+{
+  pinMode(ledpin,OUTPUT);
+  digitalWrite(ledpin, HIGH);
+  Serial.begin(9600);
+}
+
+void loop()
+{
+  char key = kpd.getKey();
+  if(key)  // Check for a valid key.
+  {
+    switch (key)
+    {
+      case '*':
+        digitalWrite(ledpin, LOW);
+        break;
+      case '#':
+        digitalWrite(ledpin, HIGH);
+        break;
+      default:
+        Serial.println(key);
+    }
+  }
+}
