@@ -3,21 +3,27 @@
    Symbol Puzzle Code
    John Kessinger
 
+   Knob Puzzle Code
+   Mark Sullivan
+
+   Morse Puzzle Code
+   John Buccilli
+
  **********************/
 
-// include the library code:
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// On the Subject of Symbols                                                                                                   //
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 #include <Wire.h>
 #include <Adafruit_RGBLCDShield.h>
 #include <utility/Adafruit_MCP23017.h>
 
-// The shield uses the I2C SCL and SDA pins. On classic Arduinos
-// this is Analog 4 and 5 so you can't use those for analogRead() anymore
-// However, you can connect other I2C sensors to the I2C bus and share
-// the I2C bus.
 Adafruit_RGBLCDShield lcd = Adafruit_RGBLCDShield();
 
 #define WHITE 0x7
 
+//The byte images of the 8 custom characters we will be using to generate the symbols
 byte newChar_0[8] = {
   B00000,
   B00000,
@@ -106,66 +112,73 @@ byte newChar_7[8] = {
   B00100
 };
 
-int start;
-
+//These varabiles each correspond to one of the byte images
 int part_1;
 int part_2;
 int part_3;
 int part_4;
 
+//Each one of these variables is made of the 4 part varaibles
 int symbol_1;
 int symbol_2;
 int symbol_3;
 int symbol_4;
 
+//These variables keep track of the button inputs
 int countLeft;
 int countUp;
 int countRight;
 int countDown;
-int countSum;
+int countSum; //This is used to determine the order the buttons are pressed
 
+//After using the count varaibles the order is recorded and checked to determine if the correct input was made
 int order_1;
 int order_2;
 int order_3;
 int order_4;
 
+//These varables check if each symbol is the the correct position as determined by the manual
 int correct_1;
 int correct_2;
 int correct_3;
 int correct_4;
 int correctAll;
 
-int errorCountSum;
+//These varables keep track of the errors for each game
+int errorCountSum; //This varable keeps track of the total number of errors made
 int errorCountKnob;
 int errorCountWires;
 int errorCountMorse;
 int errorCountSymbols;
 
+//Used to check the wire puzzle for completion or vailure depending on which variable is chosen
 int checkWires = 0;
 int wireError = 0;
-int comboCorrect;
 
-int bigButton;
+//These varibles are used for the end win condition
+int bigButton; //Checks that the big button was pressed
+//If the button is pressed then these varables check if each puzzle has been completed correctly
 int winWires;
 int winKnob;
 int winMorse;
 int winSymbols;
 
-int onSwitchPosition;
-int startOnSwitchPosition;
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// On the Subject of Knobs                                                                                                     //
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-int initialize = 0;
 int needPosition;//1 of 5 direction randomly calculated originally
 int knobPosition;//1 of 5 directions calculated each loop
 int knobPositionRead;//value read
 int switchPosition;//current position of switch
 int startingSwitchPosition;//initial position of switch
-int positionIndex;
-int thresh1 = 101;
-int thresh2 = 212;
-int thresh3 = 320;
-int thresh4 = 463;
-boolean KnobsSidePassed = false;
+int positionIndex;//used in assigning the random combinations
+int thresh1 = 172;//below is left, above is half-left
+int thresh2 = 362;//below is half-left, above is up
+int thresh3 = 493;//below is up, above is half-right
+int thresh4 = 683;//below is half-right, above is right
+
+//the possible 20 combinations the puzzle can choose to display
 String lightsArray[20] = {"10001100", "01010010", "01001010", "01100001",
                           "00010101", "00001011", "11000100", "10000101",
                           "00000111", "01000110", "11010000", "01100010",
@@ -173,8 +186,12 @@ String lightsArray[20] = {"10001100", "01010010", "01001010", "01100001",
                           "00010110", "01000101", "10100001", "10101000"
                          };
 
-#include <Keypad.h>
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// On the Subject of Morse Code                                                                                                //
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+#include <Keypad.h>
+int comboCorrect;
 const byte rows = 4;
 const byte cols = 4;
 
@@ -220,17 +237,20 @@ int minutes = startMinute;
 int seconds = startSecond;
 
 void setup() {
-  // Debugging output
   Serial.begin(9600);
-  matrix.begin(0x70);
-  pinMode(53, INPUT);
-  pinMode(14, INPUT);
+  matrix.begin(0x70);//4 digit 7 segment address
+  pinMode(53, INPUT);//bigButton
+  pinMode(14, INPUT);//checkWires
   digitalWrite(14, HIGH);
-  pinMode(15, INPUT);
+  pinMode(15, INPUT);//wireError
   digitalWrite(15, HIGH);
 
-  // set up the LCD's number of columns and rows:
-  lcd.begin(16, 2);
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // On the Subject of Symbols                                                                                                   //
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  //uses the bytes above to create new characters
+  lcd.begin(16, 2);//gives size of lcd screen
   lcd.createChar(0, newChar_0);
   lcd.createChar(1, newChar_1);
   lcd.createChar(2, newChar_2);
@@ -239,11 +259,14 @@ void setup() {
   lcd.createChar(5, newChar_5);
   lcd.createChar(6, newChar_6);
   lcd.createChar(7, newChar_7);
-  lcd.setBacklight(WHITE);
+  lcd.setBacklight(WHITE);//sets backlight color
 
-  randomSeed(analogRead(A0));
+  randomSeed(analogRead(A0));//used for rand function
 
-  // assign a random number from 0 to 5
+  //used to generate additional randomness by shuffling an array
+  //the rand function alone was not working to the level we wanted
+  //source http://stackoverflow.com/questions/32413209/shuffle-an-array-in-arduino-software
+  //this particular one selects one of the columns from the manual
   int randArray[] = {
     0, 1, 2, 3, 4, 5
   };
@@ -258,10 +281,10 @@ void setup() {
     randArray[j] = t;
   }
 
+  //the same method as shown above
+  //this particular one is used to select the random symbols from within the array chosen above
   const int symbolArray = randArray[0];
-  //Serial.println(symbolArray);
 
-  //http://stackoverflow.com/questions/32413209/shuffle-an-array-in-arduino-software
   int questionNumberArray[] = {
     0, 1, 2, 3, 4, 5, 6
   };
@@ -276,71 +299,77 @@ void setup() {
     questionNumberArray[j] = t;
   }
 
+  //assigns the symbols
   symbol_1 = questionNumberArray[0];
   symbol_2 = questionNumberArray[1];
   symbol_3 = questionNumberArray[2];
   symbol_4 = questionNumberArray[3];
 
-  if (symbolArray == 0) {
-    array_1(symbol_1);
-    symbolCreate_1(part_1, part_2, part_3, part_4);
-    array_1(symbol_2);
-    symbolCreate_2(part_1, part_2, part_3, part_4);
-    array_1(symbol_3);
-    symbolCreate_3(part_1, part_2, part_3, part_4);
-    array_1(symbol_4);
-    symbolCreate_4(part_1, part_2, part_3, part_4);
-  }
-  if (symbolArray == 1) {
-    array_2(symbol_1);
-    symbolCreate_1(part_1, part_2, part_3, part_4);
-    array_2(symbol_2);
-    symbolCreate_2(part_1, part_2, part_3, part_4);
-    array_2(symbol_3);
-    symbolCreate_3(part_1, part_2, part_3, part_4);
-    array_2(symbol_4);
-    symbolCreate_4(part_1, part_2, part_3, part_4);
-  }
-  if (symbolArray == 2) {
-    array_3(symbol_1);
-    symbolCreate_1(part_1, part_2, part_3, part_4);
-    array_3(symbol_2);
-    symbolCreate_2(part_1, part_2, part_3, part_4);
-    array_3(symbol_3);
-    symbolCreate_3(part_1, part_2, part_3, part_4);
-    array_3(symbol_4);
-    symbolCreate_4(part_1, part_2, part_3, part_4);
-  }
-  if (symbolArray == 3) {
-    array_4(symbol_1);
-    symbolCreate_1(part_1, part_2, part_3, part_4);
-    array_4(symbol_2);
-    symbolCreate_2(part_1, part_2, part_3, part_4);
-    array_4(symbol_3);
-    symbolCreate_3(part_1, part_2, part_3, part_4);
-    array_4(symbol_4);
-    symbolCreate_4(part_1, part_2, part_3, part_4);
-  }
-  if (symbolArray == 4) {
-    array_5(symbol_1);
-    symbolCreate_1(part_1, part_2, part_3, part_4);
-    array_5(symbol_2);
-    symbolCreate_2(part_1, part_2, part_3, part_4);
-    array_5(symbol_3);
-    symbolCreate_3(part_1, part_2, part_3, part_4);
-    array_5(symbol_4);
-    symbolCreate_4(part_1, part_2, part_3, part_4);
-  }
-  if (symbolArray == 5) {
-    array_6(symbol_1);
-    symbolCreate_1(part_1, part_2, part_3, part_4);
-    array_6(symbol_2);
-    symbolCreate_2(part_1, part_2, part_3, part_4);
-    array_6(symbol_3);
-    symbolCreate_3(part_1, part_2, part_3, part_4);
-    array_6(symbol_4);
-    symbolCreate_4(part_1, part_2, part_3, part_4);
-  }
+//this part assigns the correct parts needed to create the symbols selected
+if (symbolArray == 0) {
+array_1(symbol_1);
+symbolCreate_1(part_1, part_2, part_3, part_4);
+array_1(symbol_2);
+symbolCreate_2(part_1, part_2, part_3, part_4);
+array_1(symbol_3);
+symbolCreate_3(part_1, part_2, part_3, part_4);
+array_1(symbol_4);
+symbolCreate_4(part_1, part_2, part_3, part_4);
+}
+if (symbolArray == 1) {
+array_2(symbol_1);
+symbolCreate_1(part_1, part_2, part_3, part_4);
+array_2(symbol_2);
+symbolCreate_2(part_1, part_2, part_3, part_4);
+array_2(symbol_3);
+symbolCreate_3(part_1, part_2, part_3, part_4);
+array_2(symbol_4);
+symbolCreate_4(part_1, part_2, part_3, part_4);
+}
+if (symbolArray == 2) {
+array_3(symbol_1);
+symbolCreate_1(part_1, part_2, part_3, part_4);
+array_3(symbol_2);
+symbolCreate_2(part_1, part_2, part_3, part_4);
+array_3(symbol_3);
+symbolCreate_3(part_1, part_2, part_3, part_4);
+array_3(symbol_4);
+symbolCreate_4(part_1, part_2, part_3, part_4);
+}
+if (symbolArray == 3) {
+array_4(symbol_1);
+symbolCreate_1(part_1, part_2, part_3, part_4);
+array_4(symbol_2);
+symbolCreate_2(part_1, part_2, part_3, part_4);
+array_4(symbol_3);
+symbolCreate_3(part_1, part_2, part_3, part_4);
+array_4(symbol_4);
+symbolCreate_4(part_1, part_2, part_3, part_4);
+}
+if (symbolArray == 4) {
+array_5(symbol_1);
+symbolCreate_1(part_1, part_2, part_3, part_4);
+array_5(symbol_2);
+symbolCreate_2(part_1, part_2, part_3, part_4);
+array_5(symbol_3);
+symbolCreate_3(part_1, part_2, part_3, part_4);
+array_5(symbol_4);
+symbolCreate_4(part_1, part_2, part_3, part_4);
+}
+if (symbolArray == 5) {
+array_6(symbol_1);
+symbolCreate_1(part_1, part_2, part_3, part_4);
+array_6(symbol_2);
+symbolCreate_2(part_1, part_2, part_3, part_4);
+array_6(symbol_3);
+symbolCreate_3(part_1, part_2, part_3, part_4);
+array_6(symbol_4);
+symbolCreate_4(part_1, part_2, part_3, part_4);
+}
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // On the Subject of Knobs                                                                                                     //
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   pinMode(2, OUTPUT);
   pinMode(3, OUTPUT);
@@ -362,6 +391,12 @@ void setup() {
     else
       digitalWrite(i + 2, LOW);
   }
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // On the Subject of Morse Code                                                                                                //
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  //the same sort of random number generator used in the symbol puzzle
   int randArrayKey[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
                         11, 12, 13, 14, 15
                        };
@@ -386,7 +421,7 @@ void loop() {
   checkWires = digitalRead(14);
   wireError = digitalRead(15);
 
-  // --------- Run this every second ------------------
+  //the countdown timer used the millis() function then converts to minutes and seconds
   if (millis() - previousSecondMillis >= oneSecond) {
 
     matrix.writeDigitNum(0, (minutes / 10));
@@ -396,6 +431,7 @@ void loop() {
     matrix.drawColon(true);
     matrix.writeDisplay();
 
+    //if times runs out -> display starts flashing indicating a failure
     if (seconds-- == 0) {
       if (minutes == 0) {
         matrix.writeDigitNum(0, 0);
@@ -413,16 +449,17 @@ void loop() {
     previousSecondMillis += oneSecond;
   }
 
+  //checks the total number of errors
   errorCountSum = errorCountWires + errorCountKnob + errorCountMorse + errorCountSymbols;
 
   switch (errorCountSum) {
-    case 1:
+    case 1: //if one error clock speed increases
       oneSecond = 600UL;
       break;
-    case 2:
+    case 2: //if two errors clock speed increases more
       oneSecond = 200UL;
       break;
-    case 3:
+    case 3: //if three errors game is over and time stops
       matrix.writeDigitNum(0, 0);
       matrix.writeDigitNum(1, 0);
       matrix.writeDigitNum(3, 0);
@@ -433,10 +470,15 @@ void loop() {
       break;
   }
 
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // On the Subject of Symbols                                                                                                   //
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
   uint8_t buttons = lcd.readButtons();
   countSum = countLeft + countUp + countRight + countDown;
   orderPressed(countSum, countLeft, countUp, countRight);
 
+  //checks for button presses
   if (buttons) {
     if (buttons & BUTTON_LEFT) {
       countLeft = 1;
@@ -451,7 +493,6 @@ void loop() {
       countDown = 1;
     }
     if (buttons & BUTTON_SELECT) {
-      //Serial.println("Checking win...");
       winCon(order_1, order_2, order_3, order_4, symbol_1, symbol_2, symbol_3, symbol_4);
       if (correctAll == 1) {
         lcd.begin(16, 2);
@@ -462,6 +503,10 @@ void loop() {
     }
   }
 
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // On the Subject of Knobs                                                                                                     //
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
   knobPositionRead = analogRead(0);
   switchPosition = digitalRead(13);
 
@@ -469,7 +514,6 @@ void loop() {
     startingSwitchPosition = !startingSwitchPosition;
     winConKnob(knobPositionRead);
     if (knobPosition == needPosition) {
-      //Serial.println("PASSSSSSSSSS");
       for (int i = 0; i < 8; i++) { //turn on all LEDS
         winKnob = 1;
         digitalWrite(i + 2, HIGH);
@@ -477,11 +521,14 @@ void loop() {
       }
     }
     else {
-      //Serial.println("FAILLLLLLLLL");
       errorCountKnob = 1;
-      //player failed
     }
   }
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // On the Subject of Morse Code                                                                                                //
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
   char startPress = keypad.getKey();
   if (startPress == '*') {
     toggle = 1;
@@ -520,7 +567,7 @@ void loop() {
     delay(dotLen);
     combo[3] = key;
 
-    //Compares users input to current password and outputs a green LED if the password is correct else it emits a tone
+    //Compares users input to current password and outputs series of tones not corresponding to any letter is correct
     for (int i = 0; i < 4; i++) {
       if (combo[i] == password.charAt(i)) { // Comparing passwords
         comboCorrect += 1;
@@ -538,6 +585,7 @@ void loop() {
       errorCountMorse = 1;
     }
   }
+
   if (bigButton) {
     if (winWires == 1 && winKnob == 1 && winMorse == 1 && winSymbols == 1) {
       Serial.println("Congrats you didn't explode");
@@ -552,9 +600,12 @@ void loop() {
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+// Assisting Methods                                                                                                           //
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// On the Subject of Symbols                                                                                                   //
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void symbolCreate_1(int part_1, int part_2, int part_3, int part_4) {
   //symbol 1
   lcd.setCursor(1, 0);
@@ -1103,6 +1154,10 @@ void winCon (int order_1, int order_2, int order_3, int order_4, int symbol_1, i
   }
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// On the Subject of Knobs                                                                                                     //
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void winConKnob(int knobPositionRead) {
   if (knobPositionRead <= thresh1) {
     Serial.println("Left");
@@ -1125,6 +1180,10 @@ void winConKnob(int knobPositionRead) {
     knobPosition = 4;
   }
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// On the Subject of Morse Code                                                                                                //
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void MorseDot()
 {
